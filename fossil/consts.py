@@ -102,6 +102,7 @@ class DomainNames(Enum):
 
 
 class CertificateType(Enum):
+    GENERIC = auto()
     BARRIER = auto()
     BARRIERALT = auto()
     LYAPUNOV = auto()
@@ -119,7 +120,10 @@ class CertificateType(Enum):
         cls, certificate_type
     ) -> tuple[list[DomainNames], list[DomainNames]]:
         dn = DomainNames
-        if certificate_type == CertificateType.LYAPUNOV:
+        if certificate_type == CertificateType.GENERIC:
+            domains = [dn.XD]
+            data = [dn.XD]
+        elif certificate_type == CertificateType.LYAPUNOV:
             domains = [dn.XD]
             data = [dn.XD]
         elif certificate_type == CertificateType.BARRIER:
@@ -194,6 +198,7 @@ class CegisConfig:
     )  # For DoubleCegis
     SEED: int = None
     CUSTOM_CERTIFICATE: Any = None
+    CONSTRAINTS: Any = None
 
     def __getitem__(self, item):
         return getattr(self, item)
@@ -255,6 +260,7 @@ ACTIVATION_NAMES = {
 }
 
 PROPERTIES = {
+    CertificateType.GENERIC: "Generic", 
     CertificateType.LYAPUNOV: "Stability",
     CertificateType.ROA: "ROA",
     CertificateType.BARRIER: "Safety",
