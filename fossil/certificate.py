@@ -15,6 +15,7 @@ that the domains and data are as expected for a given certificate.
 from typing import Generator, Type, Any
 
 import torch
+import itertools
 from torch.optim import Optimizer
 
 import fossil.control as control
@@ -114,7 +115,7 @@ class Certificate:
 
     def get_constraints(self, verifier, C, Cdot) -> tuple:
         """
-        Returns (negation of) contraints for the certificate.
+        Returns (negation of) constraints for the certificate.
         The constraints are returned as a tuple of dictionaries, where each dictionary contains the constraints
         that should be verified together. For simplicity, as single dictionary may be returned, but it may be useful
         to verify the most difficult constraints last. If an earlier constraint is not satisfied, the later ones
@@ -150,6 +151,132 @@ class Certificate:
         """
         pass
 
+
+class CertificateGeneric(Certificate):
+
+    bias = False            # question: What to do with this?
+
+    def __init__(self, domains, config: CegisConfig) -> None:
+        self.domain = domains
+        self.control = config.CTRLAYER is not None
+        self.D = config.DOMAINS
+        self.beta = None
+        self.constraints= config.CONSTRAINTS
+
+    def compute_loss(
+            self, V: dict[str, torch.Tensor], Vdot: dict[str,torch.Tensor], circle: dict[str, torch.Tensor]
+    ) -> tuple[torch.Tensor, dict]:
+        """_summary_
+
+        Args:
+            V (torch.Tensor): Lyapunov samples over domain
+            Vdot (torch.Tensor): Lyapunov derivative samples over domain
+            circle (torch.Tensor): Circle
+
+        Returns:
+            tuple[torch.Tensor, float]: loss and accuracy
+        """
+        
+        margin = 0
+        constr_loss = torch.cat([self.constraints[label]["loss"](V[label], Vdot[label], circle[label]) for label in self.D])
+        slope = 10 ** (learner.LearnerNN.order_of_magnitude(max(map(abs,constr_loss.detach()))))
+        relu = torch.nn.LeakyReLU(1 / slope.item())
+        learn_accuracy = (constr_loss <= -margin).count_nonzero().item()
+#        loss = (relu(constr_loss + margin * circle)).mean()  # I do not yet know, what circle is good for, so I removed it
+        loss = (relu(constr_loss)).mean()
+        accuracy = {"acc": learn_accuracy * 100 / constr_loss.shape[0]}
+
+        return loss, accuracy
+
+    def learn(
+        self,
+        learner: learner.LearnerNN,
+        optimizer: Optimizer,
+        S: dict,                      # the type hint 'list' seems to be incorrect, since S needs to be a dictionary
+        Sdot: dict,
+        f_torch=None,
+    ) -> dict:
+        """
+        :param learner: learner object
+        :param optimizer: torch optimiser
+        :param S: dict of tensors of data
+        :param Sdot: dict of tensors containing f(data)
+        :return: --
+        """
+
+        learn_loops = 1000
+        samples = torch.cat([S[label] for label in S])
+        num_samples= list(map(len, S.values()))
+        num_samples_before= [0] + list(itertools.accumulate(num_samples))
+
+        if f_torch:
+            samples_dot = f_torch(samples)
+        else:
+            samples_dot = torch.cat([Sdot[label] for label in Sdot])
+
+        assert len(samples) == len(samples_dot)
+
+        for t in range(learn_loops):
+            optimizer.zero_grad()
+            if self.control:
+                samples_dot = f_torch(samples)
+
+            assert len(samples)==len(samples_dot)
+            Vbatch, Vdotbatch, circlebatch = learner.get_all(samples, samples_dot)
+
+            V= {}; Vdot= {}; circle= {};
+            n= num_samples; nb= num_samples_before;
+            for label in S:
+                V[label]= Vbatch[num_samples_before[0]:num_samples[0]]
+                Vdot[label]= Vdotbatch[num_samples_before[0]:num_samples[0]]
+                circle[label]= circlebatch[num_samples_before[0]:num_samples[0]]
+                _, *nb= nb
+                _, *n= n
+            
+            loss, learn_accuracy = self.compute_loss(V, Vdot, circle)
+
+            if self.control:
+                loss = loss + control.cosine_reg(samples, samples_dot)
+
+            if t % 100 == 0 or t == learn_loops - 1:
+                log_loss_acc(t, loss, learn_accuracy, learner.verbose)
+
+            # t>=1 ensures we always have at least 1 optimisation step
+            if learn_accuracy["acc"] == 100 and t >= 1:
+                break
+
+            loss.backward()
+            optimizer.step()
+
+            if learner._take_abs:
+                learner.make_final_layer_positive()
+
+        return {}
+
+    def get_constraints(self, verifier, V, Vdot) -> Generator:                     
+        """
+        :param verifier: verifier object
+        :param V: SMT formula of Lyapunov Function
+        :param Vdot: SMT formula of Lyapunov lie derivative
+        :return: tuple of dictionaries of lyapunov conditons
+        """
+        _Or = verifier.solver_fncts()["Or"]
+        _And = verifier.solver_fncts()["And"]
+        _Not = verifier.solver_fncts()["Not"]
+
+        print(type(self.domain["domain1"]));
+        print(type(self.constraints["domain1"]["verif"]));
+        
+        for k in self.domain.keys():
+            yield {k: _And(self.domain[k], self.constraints[k]["verif"](verifier.solver_fncts(), verifier.xs, V, Vdot))}
+
+
+    @staticmethod
+    def _assert_state(domains, data):
+        domain_labels = set(domains.keys())
+        data_labels = set(data.keys())
+        if domain_labels != data_labels:
+            raise ValueError;
 
 class Lyapunov(Certificate):
     """
@@ -637,7 +764,7 @@ class Barrier(Certificate):
             if condition and condition_old:
                 break
             condition_old = condition
-
+            
             loss.backward()
             optimizer.step()
 
@@ -1683,7 +1810,9 @@ class AutoSets:
 def get_certificate(
     certificate: CertificateType, custom_cert=None
 ) -> Type[Certificate]:
-    if certificate == CertificateType.LYAPUNOV:
+    if certificate == CertificateType.GENERIC:
+      return CertificateGeneric
+    elif certificate == CertificateType.LYAPUNOV:
         return Lyapunov
     elif certificate == CertificateType.ROA:
         return ROA
