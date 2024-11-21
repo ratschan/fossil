@@ -11,16 +11,7 @@ from fossil import certificate
 from fossil import domains
 from fossil import main
 from fossil.consts import *
-
-def lyap_loss(V, Vdot, circle):  
-  return Vdot
-
-def lyap_verif(connectives, variables, V, Vdot):
-  lyap_negated = Vdot >= 0                       
-  
-  not_origin = connectives["Not"](connectives["And"](*[xi == 0 for xi in variables]))
-  return connectives["And"](lyap_negated, not_origin)
-
+from fossil.constraints import lyapunov
 
 def test_lnn(args):
     outer = 10.0
@@ -39,7 +30,7 @@ def test_lnn(args):
     }
 
     constraints = {
-      "domain1": {"loss": lyap_loss, "verif": lyap_verif}
+      "domain1": lyapunov 
     }
 
     
