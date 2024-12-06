@@ -11,7 +11,7 @@ from fossil import certificate
 from fossil import main
 from experiments.benchmarks import models
 from fossil.consts import *
-from fossil.constraints import negative, positive, barrier
+from fossil.constraints import negative_strict, positive_strict, barrier
 
 class UnsafeDomain(domains.Set):
     dimension = 2
@@ -47,11 +47,10 @@ def test_lnn(args):
     }
 
     constraints = {
-      "initial": negative,
-      "unsafe": positive,
+      "initial": negative_strict,  # this is not necessary to be strict, but the original example used a strict constraint, here
+      "unsafe": positive_strict,
       "inductivity": barrier
     }
-
     
     system = models.Barr1
     activations = [ActivationType.SIGMOID]
