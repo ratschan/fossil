@@ -12,18 +12,26 @@ lyapunov= {"loss": lyap_loss, "verif": lyap_verif}
 def sign_loss_neg(V, Vdot, circle):  
   return V
 
-def sign_verif_neg(connectives, variables, V, Vdot):
+def sign_verif_neg_strict(connectives, variables, V, Vdot):
   return V>=0
 
-negative= {"loss": sign_loss_neg, "verif": sign_verif_neg}
+def sign_verif_neg_nonstrict(connectives, variables, V, Vdot):
+  return V>0
+
+negative_strict= {"loss": sign_loss_neg, "verif": sign_verif_neg_strict}
+negative_nonstrict= {"loss": sign_loss_neg, "verif": sign_verif_neg_nonstrict}
 
 def sign_loss_pos(V, Vdot, circle):  
   return V
 
-def sign_verif_pos(connectives, variables, V, Vdot):
+def sign_verif_pos_strict(connectives, variables, V, Vdot):
   return V<=0
 
-positive = {"loss": sign_loss_pos, "verif": sign_verif_pos}
+def sign_verif_pos_nonstrict(connectives, variables, V, Vdot):
+  return V<0
+
+positive_strict = {"loss": sign_loss_pos, "verif": sign_verif_pos_strict}
+positive_nonstrict = {"loss": sign_loss_pos, "verif": sign_verif_pos_nonstrict}
 
 def barrier_loss_belt(B_d, Bdot_d, circle):            
         margin = 0
