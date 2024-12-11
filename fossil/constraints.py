@@ -9,31 +9,31 @@ def lyap_verif(connectives, variables, V, Vdot):
 
 lyapunov= {"loss": lyap_loss, "verif": lyap_verif}
 
-def sign_loss_neg(V, Vdot, circle):  
+def sign_neg_loss(V, Vdot, circle):  
   return V
 
-def sign_verif_neg_strict(connectives, variables, V, Vdot):
+def sign_neg_strict_verif(connectives, variables, V, Vdot):
   return V>=0
 
-def sign_verif_neg_nonstrict(connectives, variables, V, Vdot):
+def sign_neg_nonstrict_verif(connectives, variables, V, Vdot):
   return V>0
 
-negative_strict= {"loss": sign_loss_neg, "verif": sign_verif_neg_strict}
-negative_nonstrict= {"loss": sign_loss_neg, "verif": sign_verif_neg_nonstrict}
+negative_strict= {"loss": sign_neg_loss, "verif": sign_neg_strict_verif}
+negative_nonstrict= {"loss": sign_neg_loss, "verif": sign_neg_nonstrict_verif}
 
-def sign_loss_pos(V, Vdot, circle):  
+def sign_pos_loss(V, Vdot, circle):  
   return V
 
-def sign_verif_pos_strict(connectives, variables, V, Vdot):
+def sign_pos_strict_verif(connectives, variables, V, Vdot):
   return V<=0
 
-def sign_verif_pos_nonstrict(connectives, variables, V, Vdot):
+def sign_pos_nonstrict_verif(connectives, variables, V, Vdot):
   return V<0
 
-positive_strict = {"loss": sign_loss_pos, "verif": sign_verif_pos_strict}
-positive_nonstrict = {"loss": sign_loss_pos, "verif": sign_verif_pos_nonstrict}
+positive_strict = {"loss": sign_pos_loss, "verif": sign_pos_strict_verif }
+positive_nonstrict = {"loss": sign_pos_loss, "verif": sign_pos_nonstrict_verif }
 
-def barrier_loss_belt(B_d, Bdot_d, circle):            
+def barrier_belt_loss(B_d, Bdot_d, circle):            
         margin = 0
         belt_index = torch.nonzero(torch.abs(B_d) <= 0.5)
 
@@ -52,4 +52,18 @@ def barrier_loss_belt(B_d, Bdot_d, circle):
 def barrier_verif(connectives, variables, V, Vdot):
         return _And(V == 0, Vdot >= 0)
 
-barrier = {"loss": barrier_loss_belt, "verif": barrier_verif }
+barrier = {"loss": barrier_belt_loss, "verif": barrier_verif }
+
+def sign_boundary_pos_verif(connectives, variables, V, Vdot):
+  assert(false)
+  return _And(V<=0, _not(self.goal), Vdot>=0)
+
+positive_boundary = { "loss": sign_pos_loss , "verif" : sign_boundary_pos_verif }
+
+def safe_progress_loss(V, Vdot, circle): lyap_loss    # this is way too strong, but used in examples
+
+def safe_progress_verif(connectives, variables, V, Vdot):
+  return _And(V<=0, _not(self.goal), Vdot>=0)
+
+safe_progress = {"loss": safe_progress_loss, "verif": safe_progress_verif }
+
