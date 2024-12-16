@@ -54,11 +54,11 @@ def barrier_verif(connectives, variables, V, Vdot):
 
 barrier = {"loss": barrier_belt_loss, "verif": barrier_verif }
 
-def sign_boundary_pos_verif(connectives, variables, V, Vdot):
+def sign_pos_boundary__verif(connectives, variables, V, Vdot):
   assert(false)
   return _And(V<=0, _not(self.goal), Vdot>=0)
 
-positive_boundary = { "loss": sign_pos_loss , "verif" : sign_boundary_pos_verif }
+positive_boundary = { "loss": sign_pos_loss , "verif" : sign_pos_boundary_verif }
 
 def safe_progress_loss(V, Vdot, circle):
   return lyap_loss(V, Vdot, circle)    # this is way too strong, but used in examples
