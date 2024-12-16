@@ -36,14 +36,14 @@ def test_lnn(args):
     XU = UnsafeDomain()
 
     sets = {
-        certificate.XD: XD,
-        certificate.XI: XI,
-        certificate.XU: XU,
+        "initial": XI,
+        "unsafe": XU,
+        "inductivity": XD,        
     }
     data = {
-        certificate.XD: XD._generate_data(500),
-        certificate.XI: XI._generate_data(500),
-        certificate.XU: XU._generate_data(500),
+        "initial": XI._generate_data(500),
+        "unsafe": XU._generate_data(500),
+        "inductivity": XD._generate_data(500),        
     }
 
     constraints = {
@@ -60,7 +60,7 @@ def test_lnn(args):
         SYSTEM=system,
         DOMAINS=sets,
         DATA=data,
-        CERTIFICATE=CertificateType.BARRIER,
+        CERTIFICATE=CertificateType.GENERIC,
         TIME_DOMAIN=TimeDomain.CONTINUOUS,
         VERIFIER=VerifierType.DREAL,
         ACTIVATION=activations,
