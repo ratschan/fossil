@@ -264,9 +264,6 @@ class CertificateGeneric(Certificate):
         _And = verifier.solver_fncts()["And"]
         _Not = verifier.solver_fncts()["Not"]
 
-        print(type(self.domain["domain1"]));
-        print(type(self.constraints["domain1"]["verif"]));
-        
         for k in self.domain.keys():
             yield {k: _And(self.domain[k], self.constraints[k]["verif"](verifier.solver_fncts(), verifier.xs, V, Vdot))}
 
@@ -1172,6 +1169,7 @@ class RWS(Certificate):
         :param Cdot: SMT formula of Barrier lie derivative
         :return: tuple of dictionaries of Barrier conditons
         """
+
         _And = verifier.solver_fncts()["And"]
         _Not = verifier.solver_fncts()["Not"]
         # Cdot <= 0 in C == 0
