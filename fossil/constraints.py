@@ -60,7 +60,8 @@ def sign_boundary_pos_verif(connectives, variables, V, Vdot):
 
 positive_boundary = { "loss": sign_pos_loss , "verif" : sign_boundary_pos_verif }
 
-def safe_progress_loss(V, Vdot, circle): lyap_loss(V, Vdot, circle)    # this is way too strong, but used in examples
+def safe_progress_loss(V, Vdot, circle):
+  return lyap_loss(V, Vdot, circle)    # this is way too strong, but used in examples
 
 def safe_progress_verif(connectives, variables, V, Vdot):
   return _And(V<=0, _not(self.goal), Vdot>=0)
