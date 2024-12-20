@@ -159,10 +159,24 @@ class CertificateGeneric(Certificate):
     def __init__(self, domains, config: CegisConfig) -> None:
         self.domain = domains
         self.control = config.CTRLAYER is not None
-        self.D = config.DOMAINS
+#        self.D = config.DOMAINS
         self.beta = None
         self.constraints= config.CONSTRAINTS
 
+    def compute_loss_constraint(self, loss_tensor):
+        margin = 0
+
+        slope = 10 ** (learner.LearnerNN.order_of_magnitude(max(map(abs,loss_tensor.detach()))))
+        relu = torch.nn.LeakyReLU(1 / slope.item())
+        loss = relu(loss_tensor).mean()        
+        learn_accuracy = (loss_tensor <= -margin).count_nonzero().item()
+#        loss = (relu(constr_loss + margin * circle)).mean()  # I do not yet know, what circle is good for, so I removed it
+
+        accuracy = learn_accuracy * 100 / loss_tensor.shape[0]
+
+        return loss, accuracy
+
+    
     def compute_loss(
             self, V: dict[str, torch.Tensor], Vdot: dict[str,torch.Tensor], circle: dict[str, torch.Tensor]
     ) -> tuple[torch.Tensor, dict]:
@@ -176,17 +190,10 @@ class CertificateGeneric(Certificate):
         Returns:
             tuple[torch.Tensor, float]: loss and accuracy
         """
-        
-        margin = 0
-        constr_loss = torch.cat([self.constraints[label]["loss"](V[label], Vdot[label], circle[label]) for label in self.D])
-        slope = 10 ** (learner.LearnerNN.order_of_magnitude(max(map(abs,constr_loss.detach()))))
-        relu = torch.nn.LeakyReLU(1 / slope.item())
-        learn_accuracy = (constr_loss <= -margin).count_nonzero().item()
-#        loss = (relu(constr_loss + margin * circle)).mean()  # I do not yet know, what circle is good for, so I removed it
-        loss = (relu(constr_loss)).mean()
-        accuracy = {"acc": learn_accuracy * 100 / constr_loss.shape[0]}
 
-        return loss, accuracy
+        loss, accuracy= zip(*(self.compute_loss_constraint(self.constraints[label]["loss"](V[label], Vdot[label], circle[label])) for label in self.constraints.keys()))
+
+        return sum(loss), { "acc": sum(list(accuracy))/float(len(list(accuracy))) }
 
     def learn(
         self,
@@ -265,7 +272,7 @@ class CertificateGeneric(Certificate):
         _Not = verifier.solver_fncts()["Not"]
 
         for k in self.domain.keys():
-            yield {k: _And(self.domain[k], self.constraints[k]["verif"](verifier.solver_fncts(), verifier.xs, V, Vdot))}
+            yield {k: _And(self.domain[k], self.constraints[k]["verif"](verifier, V, Vdot))}
 
 
     @staticmethod
@@ -343,7 +350,7 @@ class Lyapunov(Certificate):
             learn_accuracy = 0.5 * (
                 (Vdot <= -margin).count_nonzero().item()
                 + (V >= margin).count_nonzero().item()
-            )
+            )            
             loss = (relu(Vdot + margin * circle)).mean() + (
                 relu(-V + margin * circle)
             ).mean()
