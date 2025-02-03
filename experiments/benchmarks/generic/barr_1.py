@@ -45,7 +45,6 @@ def test_lnn(args):
         "unsafe": XU._generate_data(500),
         "inductivity": XD._generate_data(500),        
     }
-
     constraints = {
       "initial": negative_strict,  # this is not necessary to be strict, but the original example used a strict constraint, here
       "unsafe": positive_strict,
