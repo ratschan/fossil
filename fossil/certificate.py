@@ -18,6 +18,7 @@ import torch
 import itertools
 from torch.optim import Optimizer
 
+import numpy as np
 import fossil.control as control
 import fossil.logger as logger
 import fossil.learner as learner
@@ -168,9 +169,9 @@ class CertificateGeneric(Certificate):
 
         slope = 10 ** (learner.LearnerNN.order_of_magnitude(max(map(abs,loss_tensor.detach()))))
         relu = torch.nn.LeakyReLU(1 / slope.item())
-        loss = relu(loss_tensor).mean()        
+        loss = relu(loss_tensor).mean()
+#        loss = (relu(constr_loss + margin * circle)).mean()  # I do not yet know, what circle is good for, so I removed it        
         learn_accuracy = (loss_tensor <= -margin).count_nonzero().item()
-#        loss = (relu(constr_loss + margin * circle)).mean()  # I do not yet know, what circle is good for, so I removed it
 
         accuracy = learn_accuracy * 100 / loss_tensor.shape[0]
 
@@ -193,7 +194,7 @@ class CertificateGeneric(Certificate):
 
         loss, accuracy= zip(*(self.compute_loss_constraint(self.constraints[label]["loss"](V[label], Vdot[label], circle[label])) for label in self.constraints.keys()))
 
-        return sum(loss), { "acc": sum(list(accuracy))/float(len(list(accuracy))) }
+        return torch.mean(torch.stack(loss)), { "acc": np.mean(accuracy) }
 
     def learn(
         self,
