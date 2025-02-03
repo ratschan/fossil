@@ -41,14 +41,16 @@ def barrier_belt_loss(B_d, Bdot_d, circle):
 
         if belt_index.nelement() != 0:
             dB_belt = torch.index_select(Bdot_d, dim=0, index=belt_index[:, 0])          # choose the elements of Bdot_d for which B_d is close to zero
-            loss= (torch.relu(dB_belt + 0 * margin)).mean()
+            loss= (torch.relu(dB_belt + 0 * margin))
             percent_belt = (
                 100 * ((dB_belt <= -margin).count_nonzero()).item() / dB_belt.shape[0]
             )            
         else:
+            assert(False)                # problem: the result must be a tensor!!!!
             loss= 0
             percent_belt= 0 
 
+         
         return loss
 
 def barrier_verif(verifier,V, Vdot):
@@ -68,5 +70,3 @@ def safe_progress_verif(verifier, V, Vdot):
   return _And(V<=0, _Not(self.goal), Vdot>=0)
 
 safe_progress = { "loss": safe_progress_loss, "verif": safe_progress_verif }
-
-
